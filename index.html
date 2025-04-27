@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WEB CONTROLLER</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(135deg, #74ebd5, #acb6e5);
+      font-family: 'Poppins', sans-serif;
+    }
+
+    h1 {
+      color: #080808;
+      margin-bottom: 40px;
+      font-size: 2rem;
+    }
+
+    .buttons {
+      display: flex;
+      gap: 20px;
+    }
+
+    button {
+      background: #ffffff;
+      border: none;
+      padding: 15px 30px;
+      border-radius: 50px;
+      font-size: 1rem;
+      font-weight: bold;
+      color: #333;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+
+    button:hover {
+      background: #333;
+      color: #ffffff;
+      transform: scale(1.05);
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Which connection do you have?</h1>
+
+  <div class="buttons">
+    <button onclick="location.href='bluetoothmanual.html'">Bluetooth</button>
+    <button onclick="location.href='serialmanual.html'">Serial Port</button>
+  </div>
+
+</body>
+</html>

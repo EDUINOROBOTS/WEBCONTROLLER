@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>EDUINO AI CONTROL</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', 'Apple Color Emoji', 'Noto Color Emoji', 'Segoe UI Emoji', sans-serif;
+      background: #f5f6fa;
+      margin: 0;
+      padding: 30px;
+      text-align: center;
+    }
+
+    h2 {
+      color: #2f3640;
+      margin-bottom: 20px;
+    }
+
+    #container {
+      max-width: 700px;
+      margin: auto;
+      background: white;
+      padding: 30px;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+      border-radius: 16px;
+    }
+
+    input[type="text"] {
+      padding: 12px;
+      font-size: 16px;
+      width: 90%;
+      max-width: 500px;
+      border-radius: 10px;
+      border: 1px solid #ccc;
+      margin-bottom: 20px;
+    }
+
+    button {
+      padding: 12px 24px;
+      margin: 10px;
+      font-size: 16px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    button:hover {
+      opacity: 0.9;
+    }
+
+    #connect-btn {
+      background-color: #00a8ff;
+      color: white;
+    }
+
+    #start-btn {
+      background-color: #4cd137;
+      color: white;
+    }
+
+    #training-btn {
+      background-color: #cc37d1;
+      color: white;
+    }
+
+    #status {
+      margin-top: 15px;
+      font-weight: bold;
+      color: #e84118;
+    }
+
+    #webcam-container {
+      margin-top: 20px;
+    }
+
+    #webcam-container canvas {
+      border-radius: 20px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    #label-container {
+      margin-top: 20px;
+      font-size: 18px;
+      text-align: left;
+    }
+
+    .progress-wrapper {
+      margin: 10px 0;
+    }
+
+    .label-text {
+      margin-bottom: 6px;
+      font-weight: 500;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 20px;
+      background-color: #ddd;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: 10px;
+      transition: width 0.3s ease;
+    }
+
+    .color-0 { background-color: #00a8ff; }
+    .color-1 { background-color: #4cd137; }
+    .color-2 { background-color: #e84118; }
+    .color-3 { background-color: #fbc531; }
+    .color-4 { background-color: #8c7ae6; }
+    .color-5 { background-color: #00cec9; }
+    .color-6 { background-color: #fd79a8; }
+    .color-7 { background-color: #6c5ce7; }
+    .color-8 { background-color: #fab1a0; }
+    .color-9 { background-color: #55efc4; }
+  </style>
+</head>
+<body>
+
+<div id="container">
+  <h2>🧠 EDUINO AI</h2>
+  <input type="text" id="model-link" placeholder="Paste Teachable Machine Link">
+  <br>
+  <button id="connect-btn" onclick="connectSerial()">🔗 Connect Serial</button>
+  <button id="start-btn" onclick="startAI()">🤖 Start AI Mode</button>
+  <button id="training-btn" onclick="starttraining()">👩🏻‍💻 TRAIN MODEL</button>
+  <div id="status">Status: Not Connected</div>
+  <div id="webcam-container"></div>
+  <div id="label-container"></div>
+  <h3>Telegram Settings</h3>
+  <input type="text" id="bot-token" placeholder="Enter Telegram Bot Token">
+  <input type="text" id="chat-id" placeholder="Enter Telegram Chat ID">
+  <button onclick="submitTelegramDetails()">Submit Telegram Details</button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+<script>
+let model, webcam, labelContainer, maxPredictions;
+let serialPort, serialWriter;
+let lastSent = "";
+let telegramBotToken = "";
+let telegramChatId = "";
+
+// Connect to Serial Port
+async function connectSerial() {
+  try {
+    serialPort = await navigator.serial.requestPort();
+    await serialPort.open({ baudRate: 9600 });
+    serialWriter = serialPort.writable.getWriter();
+    document.getElementById("status").innerText = "Status: ✅ Serial Connected";
+    document.getElementById("status").style.color = "#44bd32";
+    console.log("Serial port connected successfully!");
+  } catch (err) {
+    console.error("Serial Connection Error:", err);
+    alert("Serial Connection Error: " + err);
+    document.getElementById("status").innerText = "Status: ❌ Serial Connection Failed";
+    document.getElementById("status").style.color = "#e84118";
+  }
+}
+
+// Send a command via Serial Port
+async function sendSerialCommand(cmd) {
+  if (!serialWriter) {
+    alert("Serial port is not connected. Please connect first.");
+    return;
+  }
+
+  const encoder = new TextEncoder();
+  const encodedCmd = encoder.encode(cmd + "\n");
+
+  try {
+    await serialWriter.write(encodedCmd);
+    console.log("✅ Command sent via Serial:", cmd);
+  } catch (error) {
+    console.error("❌ Failed to send command via Serial:", error);
+    alert("Failed to send command: " + error);
+  }
+}
+
+// Submit Telegram Details
+function submitTelegramDetails() {
+  telegramBotToken = document.getElementById("bot-token").value.trim();
+  telegramChatId = document.getElementById("chat-id").value.trim();
+
+  if (telegramBotToken && telegramChatId) {
+    alert("Telegram details set successfully!");
+    console.log("Bot Token:", telegramBotToken);
+    console.log("Chat ID:", telegramChatId);
+  } else {
+    alert("Please enter both Bot Token and Chat ID.");
+  }
+}
+
+// Send Telegram Message
+function sendTelegramMessage(message, imageData, isSwitchOn) {
+  if (!telegramBotToken || !telegramChatId) {
+    console.warn("Telegram details are not set. Skipping message.");
+    return;
+  }
+
+  const url = isSwitchOn
+    ? `https://api.telegram.org/bot${telegramBotToken}/sendPhoto`
+    : `https://api.telegram.org/bot${telegramBotToken}/sendMessage`;
+
+  const formData = new FormData();
+  formData.append("chat_id", telegramChatId);
+
+  if (isSwitchOn && imageData) {
+    formData.append("caption", message);
+    formData.append("photo", imageData);
+  } else {
+    formData.append("text", message);
+  }
+
+  fetch(url, {
+    method: "POST",
+    body: formData,
+  })
+    .then((response) => {
+      if (!response.ok) {
+        console.error("Failed to send Telegram message:", response.statusText);
+      } else {
+        console.log(
+          `Message sent to Telegram: "${message}"${
+            isSwitchOn ? " with image" : ""
+          }`
+        );
+      }
+    })
+    .catch((error) => {
+      console.error("Error sending Telegram message:", error);
+    });
+}
+
+// Start AI Mode
+async function startAI() {
+  let link = document.getElementById("model-link").value.trim();
+  if (!link.endsWith("/")) link += "/";
+  const modelURL = link + "model.json";
+  const metadataURL = link + "metadata.json";
+
+  try {
+    model = await tmImage.load(modelURL, metadataURL);
+    maxPredictions = model.getTotalClasses();
+    document.getElementById("status").innerText = "Status: ✅ Model Loaded";
+    document.getElementById("status").style.color = "#44bd32";
+
+    const flip = true;
+    webcam = new tmImage.Webcam(400, 300, flip);
+    await webcam.setup();
+    await webcam.play();
+    window.requestAnimationFrame(loop);
+
+    document.getElementById("webcam-container").innerHTML = "";
+    document.getElementById("webcam-container").appendChild(webcam.canvas);
+
+    labelContainer = document.getElementById("label-container");
+    labelContainer.innerHTML = "";
+    for (let i = 0; i < maxPredictions; i++) {
+      const wrapper = document.createElement("div");
+      wrapper.className = "progress-wrapper";
+
+      const label = document.createElement("div");
+      label.className = "label-text";
+      label.id = "label-" + i;
+
+      const progressBar = document.createElement("div");
+      progressBar.className = "progress-bar";
+
+      const fill = document.createElement("div");
+      fill.className = "progress-fill color-" + i;
+      fill.id = "fill-" + i;
+
+      progressBar.appendChild(fill);
+      wrapper.appendChild(label);
+      wrapper.appendChild(progressBar);
+      labelContainer.appendChild(wrapper);
+    }
+  } catch (e) {
+    alert("❌ Failed to load model. Check the link.");
+    document.getElementById("status").innerText = "Status: ❌ Model Load Failed";
+    document.getElementById("status").style.color = "#e84118";
+  }
+}
+
+// Loop for predictions
+async function loop() {
+  webcam.update();
+  await predict();
+  window.requestAnimationFrame(loop);
+}
+
+// Predict and send commands
+async function predict() {
+  const prediction = await model.predict(webcam.canvas);
+  let highestProb = 0;
+  let bestClass = "";
+
+  for (let i = 0; i < maxPredictions; i++) {
+    const prob = prediction[i].probability;
+    const className = prediction[i].className;
+
+    document.getElementById("label-" + i).innerText = `${className}: ${(prob * 100).toFixed(1)}%`;
+    document.getElementById("fill-" + i).style.width = (prob * 100) + "%";
+
+    if (prob > highestProb) {
+      highestProb = prob;
+      bestClass = className;
+    }
+  }
+
+  if (highestProb > 0.90 && bestClass !== lastSent) {
+    sendSerialCommand(bestClass);
+    sendTelegramMessage(`Detected: ${bestClass}`, null, false);
+    lastSent = bestClass;
+  }
+}
+
+function starttraining() {
+  window.open("https://teachablemachine.withgoogle.com/", "_blank");
+}
+</script>
+
+</body>
+</html>
